@@ -12,12 +12,18 @@ You should have received a copy of the GNU General Public License along with epi
 import gi
 
 gi.require_version('Gtk', '4.0')
-from gi.repository import Gtk, Gio, GLib, Gdk
+from gi.repository import Gtk, Gio, GLib
 from pkg_resources import resource_string
 import datetime
 from pathlib import Path
 import traceback
 import json
+
+
+def main():
+    app = Gtk.Application(application_id='io.github.epiccakeking.Journal')
+    app.connect('activate', MainWindow)
+    app.run(None)
 
 
 class Backend:
@@ -52,13 +58,13 @@ class Backend:
         return True
 
 
-class Settings(dict):
+class Settings:
     DEFAULTS = dict(
         date_format='',
     )
 
     def __init__(self, path):
-        self.path = (path)
+        self.path = path
         self.settings = None
         self.reload()
 
@@ -90,10 +96,11 @@ class MainWindow(Gtk.ApplicationWindow):
     forward = Gtk.Template.Child('forward')
     calendar_menu = Gtk.Template.Child('calendar_menu')
     calendar = Gtk.Template.Child('calendar')
+    page = None
 
     def __init__(self, app):
         super().__init__(application=app)
-        self.page = None
+
         self.connect('close-request', self.on_close_request)
         self.backward.connect('clicked', self.on_backward)
         self.forward.connect('clicked', self.on_forward)
@@ -103,11 +110,12 @@ class MainWindow(Gtk.ApplicationWindow):
         self.set_action('about', lambda *_: AboutModal(self))
         self.backend = Backend(Path(GLib.get_user_data_dir()) / app.get_application_id() / 'journal')
         self.settings = Settings(Path(GLib.get_user_config_dir()) / app.get_application_id() / 'settings.json')
+
         self.change_day(datetime.date.today())
         # Add CSS
-        css=Gtk.CssProvider()
+        css = Gtk.CssProvider()
         css.load_from_data(resource_string(__name__, 'css/main.css'))
-        Gtk.StyleContext().add_provider_for_display(self.get_display(), css,  Gtk.STYLE_PROVIDER_PRIORITY_USER)
+        Gtk.StyleContext().add_provider_for_display(self.get_display(), css, Gtk.STYLE_PROVIDER_PRIORITY_USER)
         self.present()
 
     def set_action(self, name, handler):
@@ -118,9 +126,9 @@ class MainWindow(Gtk.ApplicationWindow):
     def on_close_request(self, *_):
         try:
             return not self.page.save()
-        except:
+        except Exception:
             traceback.print_exc()
-            return True
+            return True  # Saving has failed so don't close the window
 
     def on_button(self, *_):
         self.close()
@@ -144,11 +152,11 @@ class MainWindow(Gtk.ApplicationWindow):
     def on_calendar_activate(self, *_):
         # Set calendar
         self.calendar.select_day(GLib.DateTime(
-            GLib.TimeZone.new_utc(),
+            GLib.TimeZone.new_utc(),  # Timezone (seemingly) doesn't matter
             self.page.date.year,
             self.page.date.month,
             self.page.date.day,
-            0, 0, 0
+            0, 0, 0  # Hours, minutes, and seconds are not used
         ))
         self.calendar.clear_marks()
         for day in self.backend.month_edited_days(self.page.date):
@@ -164,7 +172,6 @@ class MainWindow(Gtk.ApplicationWindow):
         self.calendar.clear_marks()
         for day in self.backend.month_edited_days(self.page.date):
             self.calendar.mark_day(day)
-        
 
 
 @templated
@@ -177,7 +184,7 @@ class JournalPage(Gtk.ScrolledWindow):
         self.backend = backend
         self.date = date
         self.buffer = self.text_area.get_buffer()
-        self.tags={
+        self.tags = {
             'title': self.buffer.create_tag(
                 'title',
                 foreground='pink',
@@ -200,19 +207,18 @@ class JournalPage(Gtk.ScrolledWindow):
         self.buffer.set_text(self.backend.get_day(self.date))
 
     def save(self):
-        buffer = self.text_area.get_buffer()
         return self.backend.save_day(self.date, self.buffer.get_text(*self.buffer.get_bounds(), True))
 
     def format(self):
         self.buffer.remove_all_tags(*self.buffer.get_bounds())
-        code=False
+        code = False
         for i in range(self.buffer.get_line_count()):
-            start=self.buffer.get_iter_at_line(i)[1]
-            end=start.copy()
+            start = self.buffer.get_iter_at_line(i)[1]
+            end = start.copy()
             end.forward_to_line_end()
-            text=self.buffer.get_text(start, end, True)
-            if text=='```':
-                code^=True
+            text = self.buffer.get_text(start, end, True)
+            if text == '```':
+                code ^= True
                 self.buffer.apply_tag(self.tags['code'], start, end)
             elif code:
                 self.buffer.apply_tag(self.tags['code'], start, end)
@@ -221,7 +227,7 @@ class JournalPage(Gtk.ScrolledWindow):
             elif text == '====================':
                 self.buffer.apply_tag(self.tags['rule'], start, end)
             elif text.startswith('* '):
-                bullet_end=start.copy()
+                bullet_end = start.copy()
                 bullet_end.forward_char()
                 self.buffer.apply_tag(self.tags['bullet'], start, bullet_end)
 
@@ -259,7 +265,7 @@ class SettingsModal(Gtk.Dialog):
     def on_close_request(self, *_):
         try:
             self.save_changes()
-        except:
+        except Exception:
             traceback.print_exc()
             return True
 
@@ -267,9 +273,7 @@ class SettingsModal(Gtk.Dialog):
         self.parent.settings.set(
             date_format=self.date_format.get_text(),
         )
-        pass
 
 
-app = Gtk.Application(application_id='io.github.epiccakeking.Journal')
-app.connect('activate', MainWindow)
-app.run(None)
+if __name__ == '__main__':
+    main()
