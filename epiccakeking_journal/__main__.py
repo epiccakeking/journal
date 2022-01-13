@@ -18,11 +18,22 @@ import datetime
 from pathlib import Path
 import traceback
 import json
+import string
+
+settings = None
+
+letters = set(string.ascii_letters)
+
+
+def strip_non_letters(s):
+    return ''.join(c for c in s if c in letters)
 
 
 def main():
+    global settings
     app = Gtk.Application(application_id='io.github.epiccakeking.Journal')
-    app.connect('activate', MainWindow)
+    settings = Settings(Path(GLib.get_user_config_dir()) / app.get_application_id() / 'settings.json')
+    app.connect('activate', AltGui if settings.get('alt_gui') else MainWindow)
     app.run(None)
 
 
@@ -57,10 +68,19 @@ class Backend:
         tmp_file_path.rename(file_path)
         return True
 
+    def get_edited_days(self):
+        for year_dir in self.path.iterdir():
+            year = int(year_dir.name)
+            for month_dir in year_dir.iterdir():
+                month = int(month_dir.name)
+                for day_file in month_dir.iterdir():
+                    yield datetime.date(year=year, month=month, day=int(day_file.name))
+
 
 class Settings:
     DEFAULTS = dict(
         date_format='',
+        alt_gui=False,
     )
 
     def __init__(self, path):
@@ -109,7 +129,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.set_action('settings', lambda *_: SettingsModal(self))
         self.set_action('about', lambda *_: AboutModal(self))
         self.backend = Backend(Path(GLib.get_user_data_dir()) / app.get_application_id() / 'journal')
-        self.settings = Settings(Path(GLib.get_user_config_dir()) / app.get_application_id() / 'settings.json')
+        self.settings = settings
 
         self.change_day(datetime.date.today())
         # Add CSS
@@ -172,6 +192,118 @@ class MainWindow(Gtk.ApplicationWindow):
         self.calendar.clear_marks()
         for day in self.backend.month_edited_days(self.page.date):
             self.calendar.mark_day(day)
+
+
+class WordCloud(Gtk.ScrolledWindow):
+    MAX_WORDS = 30
+
+    def __init__(self, frequency_data=None):
+        """
+        :param frequency_data: Iterable yielding (word, count) tuples
+        """
+        super().__init__(vexpand=True)
+        if frequency_data is not None:
+            self.load(frequency_data)
+
+    def load(self, frequency_data):
+        box = Gtk.TextView(wrap_mode=2, editable=False, cursor_visible=False)
+        buffer = box.get_buffer()
+        words = sorted(frequency_data, key=lambda x: x[1], reverse=True)
+        words = words[:self.MAX_WORDS]
+        if words:
+            avg = sum(x[1] for x in words) / len(words)
+        words.sort(key=lambda x: x[0])
+        for word, count in words:
+            label = Gtk.Label(
+                yalign=0,
+                vexpand=True,
+                margin_end=2,
+                margin_start=2,
+                has_tooltip=True,
+            )
+            label.set_markup(f'<span font_desc="{10 * count // avg}">{GLib.markup_escape_text(word)}</span>')
+            box.add_child_at_anchor(label, buffer.create_child_anchor(buffer.get_end_iter()))
+        self.set_child(box)
+
+    @classmethod
+    def from_string(cls, s):
+        """Generate a word cloud from a string"""
+        word_dict = {}
+        for word in s.split():
+            word_dict.setdefault(word, 0)
+            word_dict[word] += 1
+        return cls(word_dict.items())
+
+    def on_button_press(self, *_):
+        print(*_)
+        return True
+
+
+@templated
+class AltGui(Gtk.ApplicationWindow):
+    __gtype_name__ = 'AltGui'
+    backward = Gtk.Template.Child('backward')
+    forward = Gtk.Template.Child('forward')
+    calendar = Gtk.Template.Child('calendar')
+    pane = Gtk.Template.Child('pane')
+    box = Gtk.Template.Child('box')
+    page = None
+
+    def __init__(self, app):
+        Gtk.ApplicationWindow.__init__(self, application=app)
+
+        self.connect('close-request', self.on_close_request)
+        self.backward.connect('clicked', self.on_backward)
+        self.forward.connect('clicked', self.on_forward)
+        self.calendar.connect('day-selected', self.on_calendar_select)
+        self.set_action('settings', lambda *_: SettingsModal(self))
+        self.set_action('about', lambda *_: AboutModal(self))
+        self.backend = Backend(Path(GLib.get_user_data_dir()) / app.get_application_id() / 'journal')
+        self.settings = Settings(Path(GLib.get_user_config_dir()) / app.get_application_id() / 'settings.json')
+        self.cloud = WordCloud()
+
+        self.change_day(datetime.date.today())
+        MainWindow.on_calendar_activate(self)
+        self.update_cloud()
+        self.box.append(self.cloud)
+        # Add CSS
+        css = Gtk.CssProvider()
+        css.load_from_data(resource_string(__name__, 'css/main.css'))
+        Gtk.StyleContext().add_provider_for_display(self.get_display(), css, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+        self.present()
+
+    on_close_request = MainWindow.on_close_request
+    on_calendar_select = MainWindow.on_calendar_select
+    set_action = MainWindow.set_action
+
+    def on_backward(self, *_):
+        MainWindow.on_backward(self)
+        MainWindow.on_calendar_activate(self)
+
+    def on_forward(self, *_):
+        MainWindow.on_forward(self)
+        MainWindow.on_calendar_activate(self)
+
+    def change_day(self, date):
+        if self.page and not self.page.save():
+            return False
+        page = JournalPage(self.backend, date)
+        self.pane.set_end_child(page)
+        self.page = page
+        date_format = self.settings.get('date_format') or '%Y-%m-%d'
+        self.set_title('Journal: ' + date.strftime(date_format))
+        self.update_cloud()
+        return True
+
+    def update_cloud(self):
+        word_dict = {}
+        for day in self.backend.get_edited_days():
+            for word in self.backend.get_day(day).split():
+                word = strip_non_letters(word)
+                if word:
+                    word_dict.setdefault(word, 0)
+                    word_dict[word] += 1
+        self.cloud.load(word_dict.items())
 
 
 @templated
@@ -252,6 +384,7 @@ class AboutModal(Gtk.AboutDialog):
 class SettingsModal(Gtk.Dialog):
     __gtype_name__ = 'SettingsModal'
     date_format = Gtk.Template.Child('date_format')
+    alt_gui = Gtk.Template.Child('alt_gui')
 
     def __init__(self, parent):
         super().__init__()
@@ -259,6 +392,7 @@ class SettingsModal(Gtk.Dialog):
         self.set_transient_for(parent)
         self.parent = parent
         self.date_format.set_text(self.parent.settings.get('date_format'))
+        self.alt_gui.set_active(self.parent.settings.get('alt_gui'))
         self.connect('close-request', self.on_close_request)
         self.present()
 
@@ -272,6 +406,7 @@ class SettingsModal(Gtk.Dialog):
     def save_changes(self):
         self.parent.settings.set(
             date_format=self.date_format.get_text(),
+            alt_gui=self.alt_gui.get_active(),
         )
 
 

@@ -27,6 +27,11 @@ You should have received a copy of the GNU General Public License along with epi
             </child>
           </object>
         </child>
+        <child>
+          <object class="GtkCheckButton" id="alt_gui">
+            <property name="label">Use alternate GUI</property>
+          </object>
+        </child>
       </object>
     </child>
   </template>
