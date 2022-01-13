@@ -13,7 +13,7 @@ You should have received a copy of the GNU General Public License along with epi
   <template class="AltGui" parent="GtkApplicationWindow">
     <property name="default-width">800</property>
     <property name="default-height">600</property>
-    <property name="title">BreadNotebook</property>
+    <property name="title">Journal</property>
     <child type="titlebar">
       <object class="GtkHeaderBar">
         <child type="start">
@@ -43,6 +43,7 @@ You should have received a copy of the GNU General Public License along with epi
             <child>
               <object class="GtkCalendar" id="calendar"/>
             </child>
+            <!-- Word cloud gets inserted here by __init__ -->
           </object>
         </child>
       </object>
