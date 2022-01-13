@@ -1,0 +1,64 @@
+<!--
+Copyright 2022 epiccakeking
+
+This file is part of epiccakeking_journal.
+
+epiccakeking_journal is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+epiccakeking_journal is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with epiccakeking_journal. If not, see <https://www.gnu.org/licenses/>.
+-->
+<interface>
+  <template class="MainWindow" parent="GtkApplicationWindow">
+    <property name='default-width'>500</property>
+    <property name='default-height'>500</property>
+    <property name="title">Journal</property>
+    <child type="titlebar">
+      <object class="GtkHeaderBar">
+        <child type="start">
+          <object class="GtkButton" id='backward'>
+            <property name="icon-name">go-previous</property>
+          </object>
+        </child>
+        <child type="start">
+          <object class="GtkButton" id='forward'>
+            <property name="icon-name">go-next</property>
+          </object>
+        </child>
+        <child type="start">
+          <object class="GtkMenuButton">
+            <property name="icon-name">preferences-system-time-symbolic</property>
+            <property name="popover">calendar_menu</property>
+          </object>
+        </child>
+        <child type="end">
+          <object class="GtkMenuButton">
+            <property name="icon-name">open-menu-symbolic</property>
+            <property name="menu-model">main_menu</property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+    </child>
+  </template>
+  <object class="GtkPopover" id="calendar_menu">
+    <child>
+      <object class="GtkCalendar" id="calendar">
+      </object>
+    </child>
+  </object>
+  <menu id="main_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Settings</attribute>
+        <attribute name="action">win.settings</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">About</attribute>
+        <attribute name="action">win.about</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>

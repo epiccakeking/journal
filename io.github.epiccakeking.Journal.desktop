@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Journal
+Icon=io.github.epiccakeking.Journal
+Exec=python3 -m epiccakeking_journal
+StartupWMClass=io.github.epiccakeking.Journal
+Keywords=EpicCakeKing;
