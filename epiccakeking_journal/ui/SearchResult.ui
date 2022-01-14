@@ -1,0 +1,14 @@
+<interface>
+  <template class="SearchResult" parent="GtkButton">
+    <child>
+      <object class="GtkBox">
+        <child>
+          <object class="GtkLabel" id="date_label"/>
+        </child>
+        <child>
+          <object class="GtkLabel" id="preview"/>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

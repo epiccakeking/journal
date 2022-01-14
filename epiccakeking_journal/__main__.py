@@ -76,6 +76,15 @@ class Backend:
                 for day_file in month_dir.iterdir():
                     yield datetime.date(year=year, month=month, day=int(day_file.name))
 
+    def search(self, term):
+        """Each result will be yielded as a tuple: (date, line_number, line_content)
+        """
+        for day in self.get_edited_days():
+            with open(self.get_date_path(day)) as f:
+                for i, line in enumerate(f):
+                    if term.lower() in line.lower():
+                        yield day, i, line
+
 
 class Settings:
     DEFAULTS = dict(
@@ -128,6 +137,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.calendar.connect('day-selected', self.on_calendar_select)
         self.set_action('settings', lambda *_: SettingsModal(self))
         self.set_action('about', lambda *_: AboutModal(self))
+        self.set_action('search', lambda *_: SearchWindow(self))
         self.backend = Backend(Path(GLib.get_user_data_dir()) / app.get_application_id() / 'journal')
         self.settings = settings
 
@@ -258,6 +268,7 @@ class AltGui(Gtk.ApplicationWindow):
         self.calendar.connect('day-selected', self.on_calendar_select)
         self.set_action('settings', lambda *_: SettingsModal(self))
         self.set_action('about', lambda *_: AboutModal(self))
+        self.set_action('search', lambda *_: SearchWindow(self))
         self.backend = Backend(Path(GLib.get_user_data_dir()) / app.get_application_id() / 'journal')
         self.settings = Settings(Path(GLib.get_user_config_dir()) / app.get_application_id() / 'settings.json')
         self.cloud = WordCloud()
@@ -304,6 +315,48 @@ class AltGui(Gtk.ApplicationWindow):
                     word_dict.setdefault(word, 0)
                     word_dict[word] += 1
         self.cloud.load(word_dict.items())
+
+
+@templated
+class SearchWindow(Gtk.Dialog):
+    __gtype_name__ = 'SearchWindow'
+    search = Gtk.Template.Child('search')
+    results_scroller = Gtk.Template.Child('results_scroller')
+
+    def __init__(self, parent):
+        super().__init__(modal=True)
+        self.set_transient_for(parent)
+        self.parent = parent
+        self.search.connect('activate', self.on_search)
+        self.present()
+
+    def on_search(self, *_):
+        result_box = Gtk.Box(orientation=1)
+        for result in self.parent.backend.search(self.search.get_text()):
+            result_box.append(SearchResult(self, *result))
+        self.results_scroller.set_child(result_box)
+
+    def change_day(self, date):
+        self.parent.change_day(date)
+        self.close()
+
+
+@templated
+class SearchResult(Gtk.Button):
+    __gtype_name__ = 'SearchResult'
+    date_label = Gtk.Template.Child('date_label')
+    preview = Gtk.Template.Child()
+
+    def __init__(self, parent, date, line_number, text):
+        super().__init__()
+        self.parent = parent
+        self.date = date
+        self.connect('clicked', self.on_click)
+        self.date_label.set_label(date.isoformat())
+        self.preview.set_label(text)
+
+    def on_click(self, *_):
+        self.parent.change_day(self.date)
 
 
 @templated
