@@ -324,14 +324,13 @@ class SearchWindow(Gtk.Dialog):
     results_scroller = Gtk.Template.Child('results_scroller')
 
     def __init__(self, parent):
-        super().__init__(modal=True)
-        self.set_transient_for(parent)
+        super().__init__(modal=True, transient_for=parent)
         self.parent = parent
         self.search.connect('activate', self.on_search)
         self.present()
 
     def on_search(self, *_):
-        result_box = Gtk.Box(orientation=1)
+        result_box = Gtk.Box(orientation=1, vexpand=True)
         for result in self.parent.backend.search(self.search.get_text()):
             result_box.append(SearchResult(self, *result))
         self.results_scroller.set_child(result_box)
@@ -352,8 +351,8 @@ class SearchResult(Gtk.Button):
         self.parent = parent
         self.date = date
         self.connect('clicked', self.on_click)
-        self.date_label.set_label(date.isoformat())
-        self.preview.set_label(text)
+        self.date_label.set_label(date.isoformat()+': ')
+        self.preview.set_label(text.rstrip())
 
     def on_click(self, *_):
         self.parent.change_day(self.date)
