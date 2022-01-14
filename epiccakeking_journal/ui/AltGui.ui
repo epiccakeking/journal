@@ -32,6 +32,12 @@ You should have received a copy of the GNU General Public License along with epi
             <property name="menu-model">main_menu</property>
           </object>
         </child>
+        <child type="end">
+          <object class="GtkMenuButton">
+            <property name="icon-name">list-add-symbolic</property>
+            <property name="menu-model">insert_menu</property>
+          </object>
+        </child>
       </object>
     </child>
     <child>
@@ -70,6 +76,22 @@ You should have received a copy of the GNU General Public License along with epi
       <item>
         <attribute name="label" translatable="yes">About</attribute>
         <attribute name="action">win.about</attribute>
+      </item>
+    </section>
+  </menu>
+  <menu id="insert_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Insert line</attribute>
+        <attribute name="action">win.insert_line</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Insert header</attribute>
+        <attribute name="action">win.insert_header</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Insert code</attribute>
+        <attribute name="action">win.insert_code</attribute>
       </item>
     </section>
   </menu>

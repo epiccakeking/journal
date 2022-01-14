@@ -1,4 +1,4 @@
-calendar.view > grid > label:checked {
+calendar.view > grid > label:checked:not(.other-month) {
   color: pink;
 }
 

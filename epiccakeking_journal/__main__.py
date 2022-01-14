@@ -20,7 +20,7 @@ import traceback
 import json
 import string
 
-settings = None
+APP_ID = 'io.github.epiccakeking.Journal'
 
 letters = set(string.ascii_letters)
 
@@ -37,9 +37,7 @@ def strip_non_letters(s):
 
 
 def main():
-    global settings
-    app = Gtk.Application(application_id='io.github.epiccakeking.Journal')
-    settings = Settings(Path(GLib.get_user_config_dir()) / app.get_application_id() / 'settings.json')
+    app = Gtk.Application(application_id=APP_ID)
     app.connect('activate', AltGui if settings.get('alt_gui') else MainWindow)
     app.run(None)
 
@@ -142,9 +140,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.forward.connect('clicked', self.on_forward)
         self.calendar_menu.connect('show', self.on_calendar_activate)
         self.calendar.connect('day-selected', self.on_calendar_select)
-        self.set_action('settings', lambda *_: SettingsModal(self))
-        self.set_action('about', lambda *_: AboutModal(self))
-        self.set_action('search', lambda *_: SearchWindow(self))
+        self.setup_actions()
         self.backend = Backend(Path(GLib.get_user_data_dir()) / app.get_application_id() / 'journal')
         self.settings = settings
 
@@ -154,6 +150,14 @@ class MainWindow(Gtk.ApplicationWindow):
         css.load_from_data(resource_string(__name__, 'css/main.css'))
         Gtk.StyleContext().add_provider_for_display(self.get_display(), css, Gtk.STYLE_PROVIDER_PRIORITY_USER)
         self.present()
+
+    def setup_actions(self):
+        self.set_action('settings', lambda *_: SettingsModal(self))
+        self.set_action('about', lambda *_: AboutModal(self))
+        self.set_action('search', lambda *_: SearchWindow(self))
+        self.set_action('insert_line', lambda *_: self.page.insert_line())
+        self.set_action('insert_header', lambda *_: self.page.insert_header())
+        self.set_action('insert_code', lambda *_: self.page.insert_code())
 
     def set_action(self, name, handler):
         action = Gio.SimpleAction.new(name, None)
@@ -212,7 +216,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
 
 class WordCloud(Gtk.ScrolledWindow):
-    MAX_WORDS = 30
+    MAX_WORDS = 50
 
     def __init__(self, frequency_data=None, press_callback=None):
         """
@@ -229,7 +233,7 @@ class WordCloud(Gtk.ScrolledWindow):
         words = sorted(frequency_data, key=lambda x: x[1], reverse=True)
         words = words[:self.MAX_WORDS]
         if words:
-            avg = sum(x[1] for x in words) / len(words)
+            avg = sum(x[1] ** .5 for x in words) / len(words)
         else:
             avg = 1
         words.sort(key=lambda x: x[0])
@@ -240,7 +244,7 @@ class WordCloud(Gtk.ScrolledWindow):
                 margin_start=2,
                 yalign=1,
             )
-            label.set_markup(f'<span font_desc="{10 * count // avg}">{GLib.markup_escape_text(word)}</span>')
+            label.set_markup(f'<span font_desc="{10 * count ** .5 // avg}">{GLib.markup_escape_text(word)}</span>')
             button.connect('clicked', self.make_button_func(word))
             button.set_child(label)
             box.add_child_at_anchor(button, buffer.create_child_anchor(buffer.get_end_iter()))
@@ -288,8 +292,7 @@ class AltGui(Gtk.ApplicationWindow):
         self.forward.connect('clicked', self.on_forward)
         self.calendar.connect('day-selected', self.on_calendar_select)
         self.search.connect('changed', self.on_search_input)
-        self.set_action('settings', lambda *_: SettingsModal(self))
-        self.set_action('about', lambda *_: AboutModal(self))
+        MainWindow.setup_actions(self)
         self.backend = Backend(Path(GLib.get_user_data_dir()) / app.get_application_id() / 'journal')
         self.settings = Settings(Path(GLib.get_user_config_dir()) / app.get_application_id() / 'settings.json')
         self.cloud = WordCloud(press_callback=self.search.set_text)
@@ -422,6 +425,18 @@ class JournalPage(Gtk.ScrolledWindow):
             ),
         }
         self.buffer.connect('changed', lambda *_: self.format())
+        self.add_shortcut(Gtk.Shortcut.new(
+            Gtk.ShortcutTrigger.parse_string('<Control>space'),
+            Gtk.CallbackAction.new(lambda *_: self.insert_line()),
+        ))
+        self.add_shortcut(Gtk.Shortcut.new(
+            Gtk.ShortcutTrigger.parse_string('<Control>H'),
+            Gtk.CallbackAction.new(lambda *_: self.insert_header()),
+        ))
+        self.add_shortcut(Gtk.Shortcut.new(
+            Gtk.ShortcutTrigger.parse_string('<Control>M'),
+            Gtk.CallbackAction.new(lambda *_: self.insert_code()),
+        ))
         self.buffer.set_text(self.backend.get_day(self.date))
 
     def save(self):
@@ -448,6 +463,35 @@ class JournalPage(Gtk.ScrolledWindow):
                 bullet_end = start.copy()
                 bullet_end.forward_char()
                 self.buffer.apply_tag(self.tags['bullet'], start, bullet_end)
+
+    def insert_line(self):
+        self.buffer.insert_at_cursor('\n====================\n')
+
+    def insert_header(self):
+        iter = self.buffer.get_iter_at_offset(self.buffer.get_property('cursor-position'))
+        iter.set_line_offset(0)
+        iter2 = iter.copy()
+        iter2.set_line_offset(2)
+        if self.buffer.get_text(iter, iter2, True) == '# ':
+            self.buffer.delete(iter, iter2)
+        else:
+            self.buffer.insert(iter, '# ')
+
+    def insert_code(self):
+        self.buffer.begin_user_action()
+        bounds = self.buffer.get_selection_bounds()
+        if bounds:
+            self.buffer.insert(bounds[0], '```\n' if bounds[0].starts_line() else '\n```\n')
+            # Insertion invalidated the iters, so a new one is needed
+            bounds = self.buffer.get_selection_bounds()
+            self.buffer.insert(bounds[1], '\n```' if bounds[1].ends_line() else '\n```\n')
+        else:
+            self.buffer.insert_at_cursor('\n```\n')
+            offset = self.buffer.get_property('cursor-position')
+            self.buffer.insert_at_cursor('\n```\n')
+            self.buffer.place_cursor(self.buffer.get_iter_at_offset(offset))
+        self.format()
+        self.buffer.end_user_action()
 
 
 class AboutModal(Gtk.AboutDialog):
@@ -497,4 +541,5 @@ class SettingsModal(Gtk.Dialog):
 
 
 if __name__ == '__main__':
+    settings = Settings(Path(GLib.get_user_config_dir()) / APP_ID / 'settings.json')
     main()
