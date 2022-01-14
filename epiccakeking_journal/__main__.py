@@ -145,6 +145,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.settings = settings
 
         self.change_day(datetime.date.today())
+        self.page.focus()
         # Add CSS
         css = Gtk.CssProvider()
         css.load_from_data(resource_string(__name__, 'css/main.css'))
@@ -298,6 +299,7 @@ class AltGui(Gtk.ApplicationWindow):
         self.cloud = WordCloud(press_callback=self.search.set_text)
 
         self.change_day(datetime.date.today())
+        self.page.focus()
         MainWindow.on_calendar_activate(self)
         self.update_cloud()
         self.stack.add_child(self.cloud)
@@ -441,6 +443,9 @@ class JournalPage(Gtk.ScrolledWindow):
 
     def save(self):
         return self.backend.save_day(self.date, self.buffer.get_text(*self.buffer.get_bounds(), True))
+
+    def focus(self):
+        self.text_area.grab_focus()
 
     def format(self):
         self.buffer.remove_all_tags(*self.buffer.get_bounds())
