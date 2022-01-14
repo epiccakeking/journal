@@ -26,7 +26,14 @@ letters = set(string.ascii_letters)
 
 
 def strip_non_letters(s):
-    return ''.join(c for c in s if c in letters)
+    for start, c in enumerate(s):
+        if c in letters:
+            break
+    for end in range(len(s) - 1, start - 1, -1):
+        if s[end] in letters:
+            end += 1
+            break
+    return s[start:end]
 
 
 def main():
@@ -207,11 +214,12 @@ class MainWindow(Gtk.ApplicationWindow):
 class WordCloud(Gtk.ScrolledWindow):
     MAX_WORDS = 30
 
-    def __init__(self, frequency_data=None):
+    def __init__(self, frequency_data=None, press_callback=None):
         """
         :param frequency_data: Iterable yielding (word, count) tuples
         """
         super().__init__(vexpand=True)
+        self.press_callback = press_callback
         if frequency_data is not None:
             self.load(frequency_data)
 
@@ -222,17 +230,20 @@ class WordCloud(Gtk.ScrolledWindow):
         words = words[:self.MAX_WORDS]
         if words:
             avg = sum(x[1] for x in words) / len(words)
+        else:
+            avg = 1
         words.sort(key=lambda x: x[0])
         for word, count in words:
+            button = Gtk.Button(css_classes=('cloud_button',))
             label = Gtk.Label(
-                yalign=0,
-                vexpand=True,
                 margin_end=2,
                 margin_start=2,
-                has_tooltip=True,
+                yalign=1,
             )
             label.set_markup(f'<span font_desc="{10 * count // avg}">{GLib.markup_escape_text(word)}</span>')
-            box.add_child_at_anchor(label, buffer.create_child_anchor(buffer.get_end_iter()))
+            button.connect('clicked', self.make_button_func(word))
+            button.set_child(label)
+            box.add_child_at_anchor(button, buffer.create_child_anchor(buffer.get_end_iter()))
         self.set_child(box)
 
     @classmethod
@@ -248,6 +259,13 @@ class WordCloud(Gtk.ScrolledWindow):
         print(*_)
         return True
 
+    def make_button_func(self, word):
+        def f(*_):
+            self.press_callback(word)
+            return True
+
+        return f
+
 
 @templated
 class AltGui(Gtk.ApplicationWindow):
@@ -257,6 +275,9 @@ class AltGui(Gtk.ApplicationWindow):
     calendar = Gtk.Template.Child('calendar')
     pane = Gtk.Template.Child('pane')
     box = Gtk.Template.Child('box')
+    search = Gtk.Template.Child('search')
+    stack = Gtk.Template.Child('stack')
+    search_scroller = Gtk.Template.Child('search_scroller')
     page = None
 
     def __init__(self, app):
@@ -266,17 +287,18 @@ class AltGui(Gtk.ApplicationWindow):
         self.backward.connect('clicked', self.on_backward)
         self.forward.connect('clicked', self.on_forward)
         self.calendar.connect('day-selected', self.on_calendar_select)
+        self.search.connect('changed', self.on_search_input)
         self.set_action('settings', lambda *_: SettingsModal(self))
         self.set_action('about', lambda *_: AboutModal(self))
-        self.set_action('search', lambda *_: SearchWindow(self))
         self.backend = Backend(Path(GLib.get_user_data_dir()) / app.get_application_id() / 'journal')
         self.settings = Settings(Path(GLib.get_user_config_dir()) / app.get_application_id() / 'settings.json')
-        self.cloud = WordCloud()
+        self.cloud = WordCloud(press_callback=self.search.set_text)
 
         self.change_day(datetime.date.today())
         MainWindow.on_calendar_activate(self)
         self.update_cloud()
-        self.box.append(self.cloud)
+        self.stack.add_child(self.cloud)
+        self.stack.set_visible_child(self.cloud)
         # Add CSS
         css = Gtk.CssProvider()
         css.load_from_data(resource_string(__name__, 'css/main.css'))
@@ -316,6 +338,18 @@ class AltGui(Gtk.ApplicationWindow):
                     word_dict[word] += 1
         self.cloud.load(word_dict.items())
 
+    def on_search_input(self, *_):
+        text = self.search.get_text()
+        if not text:
+            self.stack.set_visible_child(self.cloud)
+            return
+        # Remove any existing results
+        results_box = Gtk.Box(orientation=1, vexpand=True)
+        for result in self.backend.search(text):
+            results_box.append(SearchResult(self, *result))
+        self.search_scroller.set_child(results_box)
+        self.stack.set_visible_child(self.search_scroller)
+
 
 @templated
 class SearchWindow(Gtk.Dialog):
@@ -351,7 +385,7 @@ class SearchResult(Gtk.Button):
         self.parent = parent
         self.date = date
         self.connect('clicked', self.on_click)
-        self.date_label.set_label(date.isoformat()+': ')
+        self.date_label.set_label(date.isoformat() + ': ')
         self.preview.set_label(text.rstrip())
 
     def on_click(self, *_):

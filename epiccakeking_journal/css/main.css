@@ -1,3 +1,9 @@
 calendar.view > grid > label:checked {
   color: pink;
 }
+
+button.cloud_button {
+  border: none;
+  background: none;
+  padding: 0;
+}

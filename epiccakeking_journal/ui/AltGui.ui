@@ -43,7 +43,19 @@ You should have received a copy of the GNU General Public License along with epi
             <child>
               <object class="GtkCalendar" id="calendar"/>
             </child>
-            <!-- Word cloud gets inserted here by __init__ -->
+            <child>
+              <object class="GtkSearchEntry" id="search">
+              </object>
+            </child>
+            <child>
+              <object class="GtkStack" id="stack">
+                <property name="transition-type">GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT</property>
+                <child>
+                  <object class="GtkScrolledWindow" id="search_scroller"/>
+                </child>
+                <!-- Word cloud gets inserted here by __init__ -->
+              </object>
+            </child>
           </object>
         </child>
       </object>
@@ -51,10 +63,6 @@ You should have received a copy of the GNU General Public License along with epi
   </template>
   <menu id="main_menu">
     <section>
-      <item>
-        <attribute name="label" translatable="yes">Search</attribute>
-        <attribute name="action">win.search</attribute>
-      </item>
       <item>
         <attribute name="label" translatable="yes">Settings</attribute>
         <attribute name="action">win.settings</attribute>
