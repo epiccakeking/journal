@@ -1,5 +1,5 @@
 <interface>
-  <template class="SearchWindow" parent="GtkDialog">
+  <template class="SearchModal" parent="GtkDialog">
     <property name='default-width'>500</property>
     <property name='default-height'>500</property>
     <property name="title">Search</property>

@@ -10,26 +10,47 @@ epiccakeking_journal is distributed in the hope that it will be useful, but WITH
 You should have received a copy of the GNU General Public License along with epiccakeking_journal. If not, see <https://www.gnu.org/licenses/>.
 -->
 <interface>
-  <template class="SettingsModal" parent="GtkDialog">
+  <template class="SettingsModal" parent="GtkWindow">
+    <property name='default-width'>500</property>
+    <property name='default-height'>500</property>
     <property name="title">Settings</property>
+    <child type="titlebar">
+      <object class="GtkHeaderBar">
+        <child type="start">
+          <object class="GtkButton" id="back">
+            <property name="icon-name">go-previous</property>
+            <property name="visible">False</property>
+          </object>
+        </child>
+      </object>
+    </child>
     <child>
-      <object class="GtkBox">
-        <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+      <object class="GtkStack" id="stack">
         <child>
           <object class="GtkBox">
+            <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
             <child>
-              <object class="GtkLabel">
-                <property name="label">Title date format: </property>
+              <object class="GtkBox">
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">Title date format:</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkEntry" id="date_format"/>
+                </child>
               </object>
             </child>
             <child>
-              <object class="GtkEntry" id="date_format"/>
+              <object class="GtkCheckButton" id="alt_gui">
+                <property name="label">Use alternate GUI</property>
+              </object>
             </child>
-          </object>
-        </child>
-        <child>
-          <object class="GtkCheckButton" id="alt_gui">
-            <property name="label">Use alternate GUI</property>
+            <child>
+              <object class="GtkButton" id="word_cloud_exclusions_button">
+                <property name="label">Manage word cloud exclusions</property>
+              </object>
+            </child>
           </object>
         </child>
       </object>
