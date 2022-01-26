@@ -47,7 +47,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.backward.connect('clicked', self.on_backward)
         self.forward.connect('clicked', self.on_forward)
         self.calendar_menu.connect('show', self.on_calendar_activate)
-        self.calendar.connect('day-selected', self.on_calendar_select)
+        self.setup_calendar()
         self.setup_actions()
         self.backend = Backend(Path(GLib.get_user_data_dir()) / app.get_application_id() / 'journal')
         self.settings = settings
@@ -67,6 +67,17 @@ class MainWindow(Gtk.ApplicationWindow):
         self.set_action('insert_line', lambda *_: self.page.insert_line())
         self.set_action('insert_header', lambda *_: self.page.insert_header())
         self.set_action('insert_code', lambda *_: self.page.insert_code())
+
+    def setup_calendar(self):
+        self.calendar.connect('day-selected', self.on_calendar_select)
+        # Update the calendar when the displayed month changes
+        for signal in (
+            'next-month',
+            'next-year',
+            'prev-month',
+            'prev-year',
+        ):
+            self.calendar.connect(signal, self.update_calendar)
 
     def set_action(self, name, handler):
         action = Gio.SimpleAction.new(name, None)
@@ -108,9 +119,7 @@ class MainWindow(Gtk.ApplicationWindow):
             self.page.date.day,
             0, 0, 0  # Hours, minutes, and seconds are not used
         ))
-        self.calendar.clear_marks()
-        for day in self.backend.month_edited_days(self.page.date):
-            self.calendar.mark_day(day)
+        self.update_calendar()
 
     def on_calendar_select(self, *_):
         date = self.calendar.get_date()
@@ -119,9 +128,28 @@ class MainWindow(Gtk.ApplicationWindow):
             month=date.get_month(),
             year=date.get_year(),
         ))
-        self.calendar.clear_marks()
-        for day in self.backend.month_edited_days(self.page.date):
-            self.calendar.mark_day(day)
+        self.update_calendar()
+
+    def update_calendar(self, *_):
+        # Hacky workaround because Gtk marks are a terrible system
+        grid=self.calendar.get_last_child()
+        month_offset=-1
+        row=1
+        date=self.calendar.get_date()
+        year, month, _day = date.get_ymd()
+        while True:
+            if not grid.get_child_at(1, row):
+                break
+            for x in range(1, 8):
+                child = grid.get_child_at(x, row)
+                if int(child.has_css_class('other-month')) !=month_offset%2:
+                    month_offset+=1
+                day=int(child.get_label())
+                if self.backend.get_day(datetime.date(year-((month+month_offset-1)//12), (month+month_offset-1)%12+1, day)):
+                    child.add_css_class('edited')
+                else:
+                    child.remove_css_class('edited')
+            row+=1
 
 
 @templated
@@ -146,6 +174,7 @@ class AltGui(Gtk.ApplicationWindow):
         self.calendar.connect('day-selected', self.on_calendar_select)
         self.search.connect('changed', self.on_search_input)
         MainWindow.setup_actions(self)
+        MainWindow.setup_calendar(self)
         self.backend = Backend(Path(GLib.get_user_data_dir()) / app.get_application_id() / 'journal')
         self.settings = Settings(Path(GLib.get_user_config_dir()) / app.get_application_id() / 'settings.json')
         self.cloud = WordCloud(press_callback=self.search.set_text)
@@ -165,6 +194,7 @@ class AltGui(Gtk.ApplicationWindow):
     on_close_request = MainWindow.on_close_request
     on_calendar_select = MainWindow.on_calendar_select
     set_action = MainWindow.set_action
+    update_calendar = MainWindow.update_calendar
 
     def on_backward(self, *_):
         MainWindow.on_backward(self)

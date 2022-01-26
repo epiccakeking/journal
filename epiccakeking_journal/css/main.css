@@ -1,5 +1,9 @@
-calendar.view > grid > label:checked:not(.other-month) {
+calendar.view > grid > label.edited {
   color: pink;
+}
+
+calendar.view > grid > label.edited.other-month {
+  opacity: .75;
 }
 
 button.cloud_button {
