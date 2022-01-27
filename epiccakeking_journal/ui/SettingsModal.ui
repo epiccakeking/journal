@@ -26,6 +26,7 @@ You should have received a copy of the GNU General Public License along with epi
     </child>
     <child>
       <object class="GtkStack" id="stack">
+        <property name="transition-type">GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT</property>
         <child>
           <object class="GtkBox">
             <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
