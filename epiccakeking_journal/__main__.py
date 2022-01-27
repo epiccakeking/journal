@@ -71,12 +71,7 @@ class MainWindow(Gtk.ApplicationWindow):
     def setup_calendar(self):
         self.calendar.connect('day-selected', self.on_calendar_select)
         # Update the calendar when the displayed month changes
-        for signal in (
-            'next-month',
-            'next-year',
-            'prev-month',
-            'prev-year',
-        ):
+        for signal in ('next-month', 'next-year', 'prev-month', 'prev-year'):
             self.calendar.connect(signal, self.update_calendar)
 
     def set_action(self, name, handler):
@@ -122,34 +117,33 @@ class MainWindow(Gtk.ApplicationWindow):
         self.update_calendar()
 
     def on_calendar_select(self, *_):
-        date = self.calendar.get_date()
-        self.change_day(datetime.date(
-            day=date.get_day_of_month(),
-            month=date.get_month(),
-            year=date.get_year(),
-        ))
+        self.change_day(datetime.date(*self.calendar.get_date().get_ymd()))
         self.update_calendar()
 
     def update_calendar(self, *_):
         # Hacky workaround because Gtk marks are a terrible system
-        grid=self.calendar.get_last_child()
-        month_offset=-1
-        row=1
-        date=self.calendar.get_date()
+        grid = self.calendar.get_last_child()
+        month_offset = -1
+        row = 1
+        date = self.calendar.get_date()
         year, month, _day = date.get_ymd()
         while True:
             if not grid.get_child_at(1, row):
                 break
             for x in range(1, 8):
                 child = grid.get_child_at(x, row)
-                if int(child.has_css_class('other-month')) !=month_offset%2:
-                    month_offset+=1
-                day=int(child.get_label())
-                if self.backend.get_day(datetime.date(year-((month+month_offset-1)//12), (month+month_offset-1)%12+1, day)):
+                if int(child.has_css_class('other-month')) != month_offset % 2:
+                    month_offset += 1
+                day = int(child.get_label())
+                if self.backend.get_day(datetime.date(
+                    year - ((month + month_offset - 1) // 12),
+                    (month + month_offset - 1) % 12 + 1,
+                    day,
+                )):
                     child.add_css_class('edited')
                 else:
                     child.remove_css_class('edited')
-            row+=1
+            row += 1
 
 
 @templated
@@ -216,7 +210,7 @@ class AltGui(Gtk.ApplicationWindow):
         return True
 
     def update_cloud(self):
-        exclude=set(self.settings.get('word_cloud_exclusions'))
+        exclude = set(self.settings.get('word_cloud_exclusions'))
         word_dict = {}
         for day in self.backend.get_edited_days():
             for word in self.backend.get_day(day).split():
