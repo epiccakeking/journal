@@ -20,7 +20,7 @@ import traceback
 from epiccakeking_journal.utilities import strip_non_letters, templated
 from epiccakeking_journal.backend import Backend, Settings
 from epiccakeking_journal.widgets import SearchResult, WordCloud, JournalPage
-from epiccakeking_journal.modals import SearchModal, AboutModal, SettingsModal
+from epiccakeking_journal.modals import SearchModal, AboutModal, SettingsModal, StatsModal
 
 APP_ID = 'io.github.epiccakeking.Journal'
 
@@ -61,6 +61,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.present()
 
     def setup_actions(self):
+        self.set_action('stats', lambda *_: StatsModal(self))
         self.set_action('settings', lambda *_: SettingsModal(self))
         self.set_action('about', lambda *_: AboutModal(self))
         self.set_action('search', lambda *_: SearchModal(self))

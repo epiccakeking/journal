@@ -178,7 +178,10 @@ class JournalPage(Gtk.ScrolledWindow):
         self.buffer.set_text(self.backend.get_day(self.date))
 
     def save(self):
-        return self.backend.save_day(self.date, self.buffer.get_text(*self.buffer.get_bounds(), True))
+        return self.backend.save_day(self.date, self.get_text())
+
+    def get_text(self):
+        return self.buffer.get_text(*self.buffer.get_bounds(), True)
 
     def focus(self):
         self.text_area.grab_focus()

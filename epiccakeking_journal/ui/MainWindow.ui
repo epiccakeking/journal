@@ -62,6 +62,10 @@ You should have received a copy of the GNU General Public License along with epi
         <attribute name="action">win.search</attribute>
       </item>
       <item>
+        <attribute name="label" translatable="yes">Stats</attribute>
+        <attribute name="action">win.stats</attribute>
+      </item>
+      <item>
         <attribute name="label" translatable="yes">Settings</attribute>
         <attribute name="action">win.settings</attribute>
       </item>

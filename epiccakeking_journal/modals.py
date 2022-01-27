@@ -100,3 +100,50 @@ class SettingsModal(Gtk.Window):
 
     def set_word_cloud_exclusions(self, exclusions):
         self.word_cloud_exclusions = exclusions
+
+
+class StatsModal(Gtk.Dialog):
+    def __init__(self, parent):
+        super().__init__(modal=True, transient_for=parent, title='Stats')
+        self.label=Gtk.Label(xalign=0)
+        self.set_child(self.label)
+        self.parent=parent
+        self.update()
+        self.present()
+    def update(self):
+        characters=0
+        words=0
+        lines=0
+        for day in self.parent.backend.get_edited_days():
+            if day == self.parent.page.date:
+                continue
+            data=self.parent.backend.get_day(day)
+            characters+=len(data)
+            words+=len(data.split())
+            lines+=data.count('\n')+1
+        self.characters=characters
+        self.words=words
+        self.lines=lines
+        self.update_current()
+
+
+    def update_current(self):
+        # Backend may not have the current text
+        data=self.parent.page.get_text()
+        self.current_characters=len(data)
+        self.current_words=len(data.split())
+        self.current_lines=data.count('\n')+1
+        self.update_label()
+
+    def update_label(self):
+        self.label.set_label(f"""\
+Selected day:
+Characters: {self.current_characters}
+Words: {self.current_words}
+Lines: {self.current_lines}
+
+All days:
+Characters: {self.characters+self.current_characters}
+Words: {self.words+self.current_words}
+Lines: {self.lines+self.current_lines}
+""")
