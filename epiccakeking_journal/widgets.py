@@ -1,3 +1,20 @@
+"""
+Copyright 2022 epiccakeking
+
+This file is part of epiccakeking_journal.
+
+epiccakeking_journal is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+epiccakeking_journal is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+epiccakeking_journal. If not, see <https://www.gnu.org/licenses/>.
+"""
 from gi.repository import Gtk, GLib
 
 from epiccakeking_journal.utilities import templated
@@ -6,24 +23,22 @@ from epiccakeking_journal.utilities import templated
 class SetManager(Gtk.Box):
     def __init__(self, initial_contents=None, callback=None):
         super().__init__(orientation=1)
-        self.entry = Gtk.Entry(
-            placeholder_text='Add a word'
-        )
-        self.entry.connect('activate', self.on_entry)
+        self.entry = Gtk.Entry(placeholder_text="Add a word")
+        self.entry.connect("activate", self.on_entry)
         self.append(self.entry)
         scroller = Gtk.ScrolledWindow(vexpand=True)
         self.list = Gtk.Box(orientation=1)
         scroller.set_child(self.list)
         self.append(scroller)
-        self.callback=None
+        self.callback = None
         if initial_contents:
             for i in initial_contents:
                 self.add_entry(i)
-        self.callback=callback
+        self.callback = callback
 
     def on_entry(self, *_):
         self.add_entry(self.entry.get_text())
-        self.entry.set_text('')
+        self.entry.set_text("")
 
     def add_entry(self, entry):
         sibling = None
@@ -38,8 +53,8 @@ class SetManager(Gtk.Box):
         widget = Gtk.Box()
         widget.value = entry
         widget.append(Gtk.Label(label=entry, hexpand=True))
-        button = Gtk.Button(icon_name='list-remove-symbolic')
-        button.connect('clicked', lambda *_: self.list_remove(widget))
+        button = Gtk.Button(icon_name="list-remove-symbolic")
+        button.connect("clicked", lambda *_: self.list_remove(widget))
         widget.append(button)
         self.list.insert_child_after(widget, sibling)
         if self.callback:
@@ -61,16 +76,16 @@ class SetManager(Gtk.Box):
 
 @templated
 class SearchResult(Gtk.Button):
-    __gtype_name__ = 'SearchResult'
-    date_label = Gtk.Template.Child('date_label')
+    __gtype_name__ = "SearchResult"
+    date_label = Gtk.Template.Child("date_label")
     preview = Gtk.Template.Child()
 
     def __init__(self, parent, date, line_number, text):
         super().__init__()
         self.parent = parent
         self.date = date
-        self.connect('clicked', self.on_click)
-        self.date_label.set_label(date.isoformat() + ': ')
+        self.connect("clicked", self.on_click)
+        self.date_label.set_label(date.isoformat() + ": ")
         self.preview.set_label(text.rstrip())
 
     def on_click(self, *_):
@@ -93,23 +108,23 @@ class WordCloud(Gtk.ScrolledWindow):
         box = Gtk.TextView(wrap_mode=2, editable=False, cursor_visible=False)
         buffer = box.get_buffer()
         words = sorted(frequency_data, key=lambda x: x[1], reverse=True)
-        words = words[:self.MAX_WORDS]
+        words = words[: self.MAX_WORDS]
         if words:
-            avg = sum(x[1] ** .5 for x in words) / len(words)
+            avg = sum(x[1] ** 0.5 for x in words) / len(words)
         else:
             avg = 1
         words.sort(key=lambda x: x[0])
         for word, count in words:
-            button = Gtk.Button(css_classes=('cloud_button',))
-            label = Gtk.Label(
-                margin_end=2,
-                margin_start=2,
-                yalign=1,
+            button = Gtk.Button(css_classes=("cloud_button",))
+            label = Gtk.Label(margin_end=2, margin_start=2, yalign=1)
+            label.set_markup(
+                f'<span font_desc="{10 * count ** .5 // avg}">{GLib.markup_escape_text(word)}</span>'
             )
-            label.set_markup(f'<span font_desc="{10 * count ** .5 // avg}">{GLib.markup_escape_text(word)}</span>')
-            button.connect('clicked', self.make_button_func(word))
+            button.connect("clicked", self.make_button_func(word))
             button.set_child(label)
-            box.add_child_at_anchor(button, buffer.create_child_anchor(buffer.get_end_iter()))
+            box.add_child_at_anchor(
+                button, buffer.create_child_anchor(buffer.get_end_iter())
+            )
         self.set_child(box)
 
     @classmethod
@@ -135,8 +150,8 @@ class WordCloud(Gtk.ScrolledWindow):
 
 @templated
 class JournalPage(Gtk.ScrolledWindow):
-    __gtype_name__ = 'JournalPage'
-    text_area = Gtk.Template.Child('text_area')
+    __gtype_name__ = "JournalPage"
+    text_area = Gtk.Template.Child("text_area")
 
     def __init__(self, backend, date):
         super().__init__()
@@ -144,37 +159,30 @@ class JournalPage(Gtk.ScrolledWindow):
         self.date = date
         self.buffer = self.text_area.get_buffer()
         self.tags = {
-            'title': self.buffer.create_tag(
-                'title',
-                foreground='pink',
-                font='Sans 20',
-            ),
-            'bullet': self.buffer.create_tag(
-                'bullet',
-                foreground='green',
-            ),
-            'code': self.buffer.create_tag(
-                'code',
-                font='Monospace',
-            ),
-            'rule': self.buffer.create_tag(
-                'rule',
-                foreground='green',
-            ),
+            "title": self.buffer.create_tag("title", foreground="pink", font="Sans 20"),
+            "bullet": self.buffer.create_tag("bullet", foreground="green"),
+            "code": self.buffer.create_tag("code", font="Monospace"),
+            "rule": self.buffer.create_tag("rule", foreground="green"),
         }
-        self.buffer.connect('changed', lambda *_: self.format())
-        self.add_shortcut(Gtk.Shortcut.new(
-            Gtk.ShortcutTrigger.parse_string('<Control>space'),
-            Gtk.CallbackAction.new(lambda *_: self.insert_line()),
-        ))
-        self.add_shortcut(Gtk.Shortcut.new(
-            Gtk.ShortcutTrigger.parse_string('<Control>H'),
-            Gtk.CallbackAction.new(lambda *_: self.insert_header()),
-        ))
-        self.add_shortcut(Gtk.Shortcut.new(
-            Gtk.ShortcutTrigger.parse_string('<Control>M'),
-            Gtk.CallbackAction.new(lambda *_: self.insert_code()),
-        ))
+        self.buffer.connect("changed", lambda *_: self.format())
+        self.add_shortcut(
+            Gtk.Shortcut.new(
+                Gtk.ShortcutTrigger.parse_string("<Control>space"),
+                Gtk.CallbackAction.new(self.insert_line),
+            )
+        )
+        self.add_shortcut(
+            Gtk.Shortcut.new(
+                Gtk.ShortcutTrigger.parse_string("<Control>H"),
+                Gtk.CallbackAction.new(self.insert_header),
+            )
+        )
+        self.add_shortcut(
+            Gtk.Shortcut.new(
+                Gtk.ShortcutTrigger.parse_string("<Control>M"),
+                Gtk.CallbackAction.new(self.insert_code),
+            )
+        )
         self.buffer.set_text(self.backend.get_day(self.date))
 
     def save(self):
@@ -194,45 +202,51 @@ class JournalPage(Gtk.ScrolledWindow):
             end = start.copy()
             end.forward_to_line_end()
             text = self.buffer.get_text(start, end, True)
-            if text == '```':
+            if text == "```":
                 code ^= True
-                self.buffer.apply_tag(self.tags['code'], start, end)
+                self.buffer.apply_tag(self.tags["code"], start, end)
             elif code:
-                self.buffer.apply_tag(self.tags['code'], start, end)
-            elif text.startswith('# '):
-                self.buffer.apply_tag(self.tags['title'], start, end)
-            elif text == '====================':
-                self.buffer.apply_tag(self.tags['rule'], start, end)
-            elif text.startswith('* '):
+                self.buffer.apply_tag(self.tags["code"], start, end)
+            elif text.startswith("# "):
+                self.buffer.apply_tag(self.tags["title"], start, end)
+            elif text == "====================":
+                self.buffer.apply_tag(self.tags["rule"], start, end)
+            elif text.startswith("* "):
                 bullet_end = start.copy()
                 bullet_end.forward_char()
-                self.buffer.apply_tag(self.tags['bullet'], start, bullet_end)
+                self.buffer.apply_tag(self.tags["bullet"], start, bullet_end)
 
     def insert_line(self):
-        self.buffer.insert_at_cursor('\n====================\n')
+        self.buffer.insert_at_cursor("\n====================\n")
 
     def insert_header(self):
-        iter = self.buffer.get_iter_at_offset(self.buffer.get_property('cursor-position'))
+        iter = self.buffer.get_iter_at_offset(
+            self.buffer.get_property("cursor-position")
+        )
         iter.set_line_offset(0)
         iter2 = iter.copy()
         iter2.set_line_offset(2)
-        if self.buffer.get_text(iter, iter2, True) == '# ':
+        if self.buffer.get_text(iter, iter2, True) == "# ":
             self.buffer.delete(iter, iter2)
         else:
-            self.buffer.insert(iter, '# ')
+            self.buffer.insert(iter, "# ")
 
     def insert_code(self):
         self.buffer.begin_user_action()
         bounds = self.buffer.get_selection_bounds()
         if bounds:
-            self.buffer.insert(bounds[0], '```\n' if bounds[0].starts_line() else '\n```\n')
+            self.buffer.insert(
+                bounds[0], "```\n" if bounds[0].starts_line() else "\n```\n"
+            )
             # Insertion invalidated the iters, so a new one is needed
             bounds = self.buffer.get_selection_bounds()
-            self.buffer.insert(bounds[1], '\n```' if bounds[1].ends_line() else '\n```\n')
+            self.buffer.insert(
+                bounds[1], "\n```" if bounds[1].ends_line() else "\n```\n"
+            )
         else:
-            self.buffer.insert_at_cursor('\n```\n')
-            offset = self.buffer.get_property('cursor-position')
-            self.buffer.insert_at_cursor('\n```\n')
+            self.buffer.insert_at_cursor("\n```\n")
+            offset = self.buffer.get_property("cursor-position")
+            self.buffer.insert_at_cursor("\n```\n")
             self.buffer.place_cursor(self.buffer.get_iter_at_offset(offset))
         self.format()
         self.buffer.end_user_action()
