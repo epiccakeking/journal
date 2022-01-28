@@ -22,7 +22,6 @@ from gi.repository import Gtk, Gio, GLib
 from pkg_resources import resource_string
 import datetime
 from pathlib import Path
-import traceback
 from epiccakeking_journal.utilities import strip_non_letters, templated
 from epiccakeking_journal.backend import Backend, Settings
 from epiccakeking_journal.widgets import SearchResult, WordCloud, JournalPage
@@ -31,6 +30,7 @@ from epiccakeking_journal.modals import (
     AboutModal,
     SettingsModal,
     StatsModal,
+    ErrorDialog,
 )
 
 APP_ID = "io.github.epiccakeking.Journal"
@@ -98,9 +98,9 @@ class MainWindow(Gtk.ApplicationWindow):
     def on_close_request(self, *_):
         try:
             return not self.page.save()
-        except Exception:
-            traceback.print_exc()
-            return True  # Saving has failed so don't close the window
+        except Exception as e:
+            ErrorDialog(self, str(e))
+            return True
 
     def on_button(self, *_):
         self.close()

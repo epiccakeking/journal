@@ -95,8 +95,8 @@ class SettingsModal(Gtk.Window):
     def on_close_request(self, *_):
         try:
             self.save_changes()
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            ErrorDialog(self, str(e))
             return True
 
     def save_changes(self):
@@ -177,3 +177,10 @@ Words: {self.words + self.current_words}
 Lines: {self.lines + self.current_lines}
 """
         )
+
+
+class ErrorDialog(Gtk.Dialog):
+    def __init__(self, parent, text):
+        super().__init__(modal=True, transient_for=parent, title="Error")
+        self.set_child(Gtk.Label(xalign=0, label=text))
+        self.present()
