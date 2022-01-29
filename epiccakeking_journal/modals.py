@@ -15,8 +15,6 @@ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more de
 You should have received a copy of the GNU General Public License along with
 epiccakeking_journal. If not, see <https://www.gnu.org/licenses/>.
 """
-import traceback
-
 from gi.repository import Gtk
 
 from epiccakeking_journal.utilities import templated
