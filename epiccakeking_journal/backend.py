@@ -41,8 +41,10 @@ class Backend:
 
     def save_day(self, date, data):
         file_path = self.get_date_path(date)
+        # For consistency ensure empty days don't have a file.
         if data == "" and file_path.exists():
             file_path.unlink()
+            return True
         if data == self.get_day(date):
             return True
         file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -52,6 +54,8 @@ class Backend:
         return True
 
     def get_edited_days(self):
+        if not self.path.exists():
+            return
         for year_dir in self.path.iterdir():
             year = int(year_dir.name)
             for month_dir in year_dir.iterdir():

@@ -109,16 +109,14 @@ class WordCloud(Gtk.ScrolledWindow):
         buffer = box.get_buffer()
         words = sorted(frequency_data, key=lambda x: x[1], reverse=True)
         words = words[: self.MAX_WORDS]
-        if words:
-            avg = sum(x[1] ** 0.5 for x in words) / len(words)
-        else:
-            avg = 1
+        avg = sum(x[1] ** 0.5 for x in words) / (len(words) or 1)
         words.sort(key=lambda x: x[0])
         for word, count in words:
             button = Gtk.Button(css_classes=("cloud_button",))
             label = Gtk.Label(margin_end=2, margin_start=2, yalign=1)
             label.set_markup(
-                f'<span font_desc="{10 * count ** .5 // avg}">{GLib.markup_escape_text(word)}</span>'
+                f'<span font_desc="{count ** .5 * 10 / avg}">\
+{GLib.markup_escape_text(word)}</span>'
             )
             button.connect("clicked", self.make_button_func(word))
             button.set_child(label)
@@ -165,24 +163,17 @@ class JournalPage(Gtk.ScrolledWindow):
             "rule": self.buffer.create_tag("rule", foreground="green"),
         }
         self.buffer.connect("changed", lambda *_: self.format())
-        self.add_shortcut(
-            Gtk.Shortcut.new(
-                Gtk.ShortcutTrigger.parse_string("<Control>space"),
-                Gtk.CallbackAction.new(self.insert_line),
+        for shortcut, action in (
+            ("<Control>space", self.insert_line),
+            ("<Control>H", self.insert_header),
+            ("<Control>M", self.insert_code),
+        ):
+            self.add_shortcut(
+                Gtk.Shortcut.new(
+                    Gtk.ShortcutTrigger.parse_string(shortcut),
+                    Gtk.CallbackAction.new(action),
+                )
             )
-        )
-        self.add_shortcut(
-            Gtk.Shortcut.new(
-                Gtk.ShortcutTrigger.parse_string("<Control>H"),
-                Gtk.CallbackAction.new(self.insert_header),
-            )
-        )
-        self.add_shortcut(
-            Gtk.Shortcut.new(
-                Gtk.ShortcutTrigger.parse_string("<Control>M"),
-                Gtk.CallbackAction.new(self.insert_code),
-            )
-        )
         self.buffer.set_text(self.backend.get_day(self.date))
 
     def save(self):
@@ -216,10 +207,10 @@ class JournalPage(Gtk.ScrolledWindow):
                 bullet_end.forward_char()
                 self.buffer.apply_tag(self.tags["bullet"], start, bullet_end)
 
-    def insert_line(self):
+    def insert_line(self, *_):
         self.buffer.insert_at_cursor("\n====================\n")
 
-    def insert_header(self):
+    def insert_header(self, *_):
         iter = self.buffer.get_iter_at_offset(
             self.buffer.get_property("cursor-position")
         )
@@ -231,7 +222,7 @@ class JournalPage(Gtk.ScrolledWindow):
         else:
             self.buffer.insert(iter, "# ")
 
-    def insert_code(self):
+    def insert_code(self, *_):
         self.buffer.begin_user_action()
         bounds = self.buffer.get_selection_bounds()
         if bounds:

@@ -38,7 +38,9 @@ APP_ID = "io.github.epiccakeking.Journal"
 
 def main():
     app = Gtk.Application(application_id=APP_ID)
-    app.connect("activate", AltGui if settings.get("alt_gui") else MainWindow)
+    settings = Settings(Path(GLib.get_user_config_dir()) / APP_ID / "settings.json")
+    gui = AltGui if settings.get("alt_gui") else MainWindow
+    app.connect("activate", lambda _: gui(app, settings))
     app.run(None)
 
 
@@ -51,7 +53,7 @@ class MainWindow(Gtk.ApplicationWindow):
     calendar = Gtk.Template.Child("calendar")
     page = None
 
-    def __init__(self, app):
+    def __init__(self, app, settings):
         super().__init__(application=app)
 
         self.connect("close-request", self.on_close_request)
@@ -76,6 +78,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.present()
 
     def setup_actions(self):
+        """initialize action handlers"""
         self.set_action("stats", lambda *_: StatsModal(self))
         self.set_action("settings", lambda *_: SettingsModal(self))
         self.set_action("about", lambda *_: AboutModal(self))
@@ -91,21 +94,21 @@ class MainWindow(Gtk.ApplicationWindow):
             self.calendar.connect(signal, self.update_calendar)
 
     def set_action(self, name, handler):
+        """Connect an action"""
         action = Gio.SimpleAction.new(name, None)
         action.connect("activate", handler)
         self.add_action(action)
 
     def on_close_request(self, *_):
+        """Ensure journal is saved before closing"""
         try:
             return not self.page.save()
         except Exception as e:
             ErrorDialog(self, str(e))
-            return True
-
-    def on_button(self, *_):
-        self.close()
+            return True  # Cancel the close request
 
     def change_day(self, date):
+        """Set which day to show"""
         if self.page and not self.page.save():
             return False
         page = JournalPage(self.backend, date)
@@ -122,7 +125,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.change_day(self.page.date + datetime.timedelta(days=1))
 
     def on_calendar_activate(self, *_):
-        # Set calendar
+        """Sync calendar to current date"""
         self.calendar.select_day(
             GLib.DateTime(GLib.TimeZone.new_utc(), *self.page.date.timetuple()[:6])
         )
@@ -133,15 +136,15 @@ class MainWindow(Gtk.ApplicationWindow):
         self.update_calendar()
 
     def update_calendar(self, *_):
+        """Reload edited day indicators"""
         # Hacky workaround because Gtk marks are a terrible system
         grid = self.calendar.get_last_child()
         month_offset = -1
         row = 1
         date = self.calendar.get_date()
         year, month, _day = date.get_ymd()
-        while True:
-            if not grid.get_child_at(1, row):
-                break
+        # Iterate over the rows of the calendar
+        while grid.get_child_at(1, row):
             for x in range(1, 8):
                 child = grid.get_child_at(x, row)
                 if int(child.has_css_class("other-month")) != month_offset % 2:
@@ -173,7 +176,7 @@ class AltGui(Gtk.ApplicationWindow):
     search_scroller = Gtk.Template.Child("search_scroller")
     page = None
 
-    def __init__(self, app):
+    def __init__(self, app, settings):
         Gtk.ApplicationWindow.__init__(self, application=app)
 
         self.connect("close-request", self.on_close_request)
@@ -186,11 +189,7 @@ class AltGui(Gtk.ApplicationWindow):
         self.backend = Backend(
             Path(GLib.get_user_data_dir()) / app.get_application_id() / "journal"
         )
-        self.settings = Settings(
-            Path(GLib.get_user_config_dir())
-            / app.get_application_id()
-            / "settings.json"
-        )
+        self.settings = settings
         self.cloud = WordCloud(press_callback=self.search.set_text)
 
         self.change_day(datetime.date.today())
@@ -207,6 +206,7 @@ class AltGui(Gtk.ApplicationWindow):
         )
         self.present()
 
+    # Reuse functions from MainWindow
     on_close_request = MainWindow.on_close_request
     on_calendar_select = MainWindow.on_calendar_select
     set_action = MainWindow.set_action
@@ -227,7 +227,7 @@ class AltGui(Gtk.ApplicationWindow):
         self.pane.set_end_child(page)
         self.page = page
         date_format = self.settings.get("date_format") or "%Y-%m-%d"
-        self.set_title("Journal: " + date.strftime(date_format))
+        self.set_title(f"Journal: {date.strftime(date_format)}")
         self.update_cloud()
         return True
 
@@ -247,7 +247,6 @@ class AltGui(Gtk.ApplicationWindow):
         if not text:
             self.stack.set_visible_child(self.cloud)
             return
-        # Remove any existing results
         results_box = Gtk.Box(orientation=1, vexpand=True)
         for result in self.backend.search(text):
             results_box.append(SearchResult(self, *result))
@@ -256,5 +255,4 @@ class AltGui(Gtk.ApplicationWindow):
 
 
 if __name__ == "__main__":
-    settings = Settings(Path(GLib.get_user_config_dir()) / APP_ID / "settings.json")
     main()
