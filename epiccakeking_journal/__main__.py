@@ -19,6 +19,16 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Gio, GLib
+
+# Try to load Libadwaita.
+have_adw = False
+try:
+    gi.require_version("Adw", "1")
+    from gi.repository import Adw
+
+    have_adw = True
+except Exception:  # Oh no! Anyway
+    pass
 from pkg_resources import resource_string
 import datetime
 from pathlib import Path
@@ -37,7 +47,7 @@ APP_ID = "io.github.epiccakeking.Journal"
 
 
 def main():
-    app = Gtk.Application(application_id=APP_ID)
+    app = (Adw if have_adw else Gtk).Application(application_id=APP_ID)
     settings = Settings(Path(GLib.get_user_config_dir()) / APP_ID / "settings.json")
     gui = AltGui if settings.get("alt_gui") else MainWindow
     app.connect("activate", lambda _: gui(app, settings))
