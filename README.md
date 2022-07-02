@@ -4,7 +4,7 @@ A simple journal application using GTK.
 
 ## Installation
 
-From PyPI:
+From PyPI (probably out of date):
 
 ```
 pip install epiccakeking-journal
@@ -13,8 +13,7 @@ pip install epiccakeking-journal
 From source:
 
 ```
-git clone https://github.com/epiccakeking/journal.git
-pip install ./journal
+pip install --no-cache-dir https://github.com/epiccakeking/journal/archive/refs/heads/main.zip
 ```
 
 Run without installing:
