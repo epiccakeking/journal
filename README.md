@@ -13,7 +13,7 @@ pip install epiccakeking-journal
 From source:
 
 ```
-pip install --no-cache-dir https://github.com/epiccakeking/journal/archive/refs/heads/main.zip
+pip install --no-cache-dir https://github.com/epiccakeking/journal/archive/main.zip
 ```
 
 Run without installing:
